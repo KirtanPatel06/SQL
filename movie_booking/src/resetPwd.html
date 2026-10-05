@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reset Password</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap");
+
+        body {
+            font-family: "Outfit", sans-serif;
+            background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6 text-white">
+    <div class="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-800/80 p-8 shadow-2xl backdrop-blur-xl">
+        <h1 class="mb-2 text-3xl font-bold text-center">Reset Your Password</h1>
+        <p class="mb-8 text-center text-slate-400">Enter your email and new-password</p>
+
+        <form id="reset-password-form">
+            <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-slate-300">Email</label>
+                <input id="email" type="email" required
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none hover:border-cyan-400 focus:bg-slate-950"
+                    placeholder="Enter email" />
+            </div>
+
+            <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-slate-300">new-Password</label>
+                <input id="password" type="password" required
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none hover:border-cyan-400 focus:bg-slate-950"
+                    placeholder="Enter new-password" />
+            </div>
+
+            <button type="submit"
+                class="w-full rounded-xl mt-6 bg-cyan-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400 hover:scale-[1.02] active:scale-95">
+                Reset Password
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('reset-password-form');
+
+        form.addEventListener('submit', async(e)=>{
+            e.preventDefault();
+
+            const email = document.getElementById('email').value.trim();
+            const newPassword = document.getElementById('password').value.trim();
+
+            try{
+                const res = await fetch("http://localhost:8080/reset/password-reset",{
+                    method: "PATCH",
+                    headers:{
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({email, newPassword})
+                });
+
+                const data = await res.json();
+
+                if(!res.ok){
+                    alert(data.message);
+                    return;
+                }
+
+                alert(data.message);
+
+                window.location.href="http://localhost:8080/login";
+            }
+            catch(err){
+                alert("Something went wrong.");
+                console.log(err);
+            }
+        });
+    </script>
+</body>

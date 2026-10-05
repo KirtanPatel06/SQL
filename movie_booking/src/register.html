@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Account</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap");
+
+        body {
+            font-family: "Outfit", sans-serif;
+            background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6 text-white">
+
+    <div class="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-800/80 p-8 shadow-2xl backdrop-blur-xl">
+
+        <h1 class="text-3xl font-bold text-center mb-2">
+            Create Account
+        </h1>
+
+        <p class="text-center text-slate-400 mb-8">
+            Join Baburao Cinema
+        </p>
+
+        <form id="register-form">
+
+            <!-- Name -->
+            <div class="mb-5">
+                <label class="block mb-2 text-sm font-medium text-slate-300">
+                    Name
+                </label>
+
+                <input
+                    id="name"
+                    type="text"
+                    required
+                    placeholder="Enter your name"
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none transition-all duration-200 hover:border-cyan-400 focus:bg-slate-950">
+            </div>
+
+            <!-- Email -->
+            <div class="mb-5">
+                <label class="block mb-2 text-sm font-medium text-slate-300">
+                    Email
+                </label>
+
+                <input
+                    id="email"
+                    type="email"
+                    required
+                    placeholder="Enter your email"
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none transition-all duration-200 hover:border-cyan-400 focus:bg-slate-950">
+            </div>
+
+            <!-- Password -->
+            <div class="mb-7">
+                <label class="block mb-2 text-sm font-medium text-slate-300">
+                    Password
+                </label>
+
+                <input
+                    id="password"
+                    type="password"
+                    required
+                    placeholder="Create a password"
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none transition-all duration-200 hover:border-cyan-400 focus:bg-slate-950">
+            </div>
+
+            <!-- Links -->
+            <div class="flex justify-between items-center mb-6 text-[17px]">
+
+                <a href="/login"
+                    class="inline-block text-cyan-400 hover:text-cyan-300 hover:scale-105 transition-all duration-200">
+                    Already have an account?
+                </a>
+
+                <a href="/"
+                    class="inline-block text-cyan-400 hover:text-cyan-300 hover:scale-105 transition-all duration-200">
+                    Back to Home
+                </a>
+
+            </div>
+
+            <!-- Button -->
+            <button
+                type="submit"
+                class="w-full rounded-xl bg-cyan-500 py-3 font-semibold text-slate-950 transition-all duration-200 hover:bg-cyan-400 hover:scale-[1.02] active:scale-95">
+                Create Account
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <script>
+        const form = document.getElementById("register-form");
+
+        form.addEventListener('submit', async(e)=>{
+            e.preventDefault();
+
+            const name = document.getElementById("name").value.trim();
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            try{
+                const res = await fetch("http://localhost:8080/api/auth/register", {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({name, email, password})
+                });
+
+                console.log(res);
+
+                const data = await res.json();
+
+                if(!res.ok){
+                    alert(data.message);
+                    return;
+                }
+
+                alert(`${data.data.name} registered with ${data.data.id}`);
+
+                window.location.href = "http://localhost:8080/login";
+            }
+            catch(err){
+                alert("Something went wrong.");
+                console.log(err);
+            }
+        })
+    </script>
+</body>

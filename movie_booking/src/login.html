@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap");
+
+        body {
+            font-family: "Outfit", sans-serif;
+            background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-6 text-white">
+    <div class="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-800/80 p-8 shadow-2xl backdrop-blur-xl">
+        <h1 class="mb-2 text-3xl font-bold text-center">Login</h1>
+        <p class="mb-8 text-center text-slate-400">Enter your email and password</p>
+
+        <form id="login-form">
+            <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-slate-300">Email</label>
+                <input id="email" type="email" required
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none hover:border-cyan-400 focus:bg-slate-950"
+                    placeholder="Enter email" />
+            </div>
+
+            <div class="mb-4">
+                <label class="mb-2 block text-sm font-medium text-slate-300">Password</label>
+                <input id="password" type="password" required
+                    class="w-full rounded-xl border border-slate-600 bg-slate-900 px-4 py-3 outline-none hover:border-cyan-400 focus:bg-slate-950"
+                    placeholder="Enter password" />
+            </div>
+
+            <div class="h-6 flex items-center justify-between text-[17px] mt-8 mb-8">
+                <div id="create-account" class="text-cyan-400 transition hover:text-cyan-300 hover:cursor-pointer hover:scale-105">
+                    Create Account
+                </div>
+
+                <div id="reset-password" class="text-cyan-400 transition hover:text-cyan-300 hover:cursor-pointer hover:scale-105">
+                    Reset Password
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400 hover:scale-[1.02] active:scale-95">
+                Login
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById("login-form");
+
+        form.addEventListener('submit', async(e) => {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            try{
+                const res = await fetch('http://localhost:8080/api/auth/login', {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({email, password})
+                });
+
+                console.log(res);
+                const data = await res.json();
+
+                if(!res.ok){
+                    alert(data.message || "Login Failed !");
+                    return;
+                }
+
+                if(data.data?.token)
+                    localStorage.setItem("accessToken", data.data.token);
+
+                alert(data.message || "Login successful");
+
+                window.location.href = 'http://localhost:8080/';
+            }
+            catch(err){
+                alert("Something went wrong");
+                console.error(err);
+            }  
+        });
+
+        const createAcnt = document.getElementById("create-account");
+        createAcnt.addEventListener("click" , async()=>{
+            window.location.href="http://localhost:8080/register";
+            // window.location.href="http://127.0.0.1:3000/movie_booking/src/register.html";
+        });
+
+        const resetPassword = document.getElementById("reset-password");
+        resetPassword.addEventListener("click", async()=>{
+            window.location.href="http://localhost:8080/password-reset";
+        })
+
+    </script>
+</body>

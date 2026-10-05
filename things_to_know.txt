@@ -1,0 +1,96 @@
+// ===========================================
+// What is a Page in Database?
+// ===========================================
+
+// Page Database ki sabse chhoti storage unit hoti hai, jisme DB data ko Disk se Read aur Write karta hai.
+
+// Simple words mein: Database kabhi bhi 1 row ya 1 column ko directly Disk se read nahi karta. Wo hamesha ek "Page" ko read/write karta hai.
+
+// Example: Maan lo PostgreSQL ka page size 8 KB hai.
+
+// Disk
+// ┌──────────┬──────────┬──────────┬──────────┐
+// │ Page 1   │ Page 2   │ Page 3   │ Page 4   │
+// │ 8 KB     │ 8 KB     │ 8 KB     │ 8 KB     │
+// └──────────┴──────────┴──────────┴──────────┘
+
+// Har page ke andar multiple rows store hoti hain.
+
+// Page 1
+// ┌──────────────────────────┐
+// │ Row 1                    │
+// │ Row 2                    │
+// │ Row 3                    │
+// │ Row 4                    │
+// │ ...                      │
+// └──────────────────────────┘
+
+// Agar tum query likhte ho: SELECT * FROM users WHERE id = 5;
+
+// To DB directly Row 5 ko read nahi karta. Pehle us page ko memory mein load karta hai jisme Row 5 stored hai, phir us page se Row 5 nikalta hai.
+
+// Isliye databases pages mein kaam karte hain, kyunki Disk se baar-baar chhoti-chhoti reads karna expensive hota hai.
+
+// -------------------------------------------------------------------------------------------------
+// ⭐️ Question: "Database rows ki jagah Pages hi kyun read karta hai?"
+
+// Reason:
+HDD aur SSD internally data ko sectors/blocks (pages) mein manage karte hain. Wo 1 row ya 10 bytes directly read/write nahi kar sakte. Unka minimum transfer unit ek block/page hota hai (jaise 4 KB, 8 KB, etc.).
+
+// Matlab Hardware khud hi bolta hai: "Main minimum ek Page to transfer karunga hi. Fir chahe tum 1 Row ki demand karo ya 50 Row ki"
+
+// Isliye Database bhi kehta hai ki, Disk to waise bhi minimum 1 Page dega hi, to kyun na mai bhi apne data ko pages mein hi rakh du.
+// Isse:
+// ✔️ Baar-baar Disk I/O requests nahi bhejni padti.
+// ✔️ CPU ko baar-baar I/O completion handle nahi karna padta.
+// ✔️ Buffer Cache ka reuse hota hai.
+// ✔️ Agli queries memory se answer ho sakti hain.
+
+------------------------------------------------------------
+// Example: Page 1 (8 KB)
+// ┌──────────────────────────┐
+// │ Row 1                    │
+// │ Row 2                    │
+// │ Row 3                    │
+// │ Row 4                    │
+// │ Row 5   <-- Required     │
+// │ Row 6                    │
+// │ ...                      │
+// └──────────────────────────┘
+
+// Agar hume sirf Row 5 chahiye, tab bhi Hardware poora Page hi read karega.
+
+------------------------------------------------------------
+// Iska fayda?
+
+// Ek hi Disk I/O mein poora Page memory mein aa jata hai.
+
+// Disk
+//      │
+//      ▼
+// Read Page 1 (8 KB)
+//      │
+//      ▼
+// Memory
+// ├── Row 1
+// ├── Row 2
+// ├── Row 3
+// ├── Row 4
+// ├── Row 5
+// └── ...
+
+// Agar baad mein Row 3 ya Row 6 chahiye, to Database ko Disk par dobara nahi jana padega. Wo directly Memory (Buffer Cache) se data de dega.
+
+------------------------------------------------------------
+// ✅ Conclusion:
+// ✔️ Database Pages isliye use karta hai kyunki HDD/SSD bhi
+//     data ko Blocks/Pages mein hi transfer karte hain.
+//
+// ✔️ Hardware ka minimum Read/Write unit Page hota hai,
+//     Row nahi.
+//
+// ✔️ Ek Page read hone ke baad uski saari Rows memory mein
+//     available hoti hain, jisse future queries fast ho jaati hain.
+//
+// ✔️ Isse Disk I/O requests kam hoti hain, CPU overhead kam hota hai,
+//     aur Buffer Cache ka efficiently use hota hai.

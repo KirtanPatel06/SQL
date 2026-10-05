@@ -1,0 +1,57 @@
+// Some basic commands to create a docker container from Terminal:-
+-> docker create   // Sirf container create karta hai, start nahi karta.
+-> docker start    // Existing container ko start karta hai.
+-> docker run      // = docker create + docker start
+
+// Agar tumhe uss container ko background mein chalana hai to sirf peeche "-d" likh do
+-> docker start -d <container_name>     // to run an existing container in background
+-> docker run -d <container_name>     // to (create + start) a container in background
+
+
+//--------------------------------------------------------------------------------------------
+
+// Open Terminal(Mac/Linux) OR Cmd Prompt(Windows)
+// Write the follwoing commands to create a container:-
+-> docker run -d\    # Container ko run karo.(-d means 'detached', matlab background mein run karo)
+-> --name SQL\                 # Container ka naam "SQL" rakho.
+-> -e POSTGRES_USER=admin\     # PostgreSQL username.
+-> -e POSTGRES_PASSWORD=...\   # PostgreSQL password.
+-> -p 5432:5432\               # Host port : Container port.
+-> postgres:17\                # PostgreSQL 17 Docker image.
+
+// You cannot see your Database directly in the Docker's Desktop. Beacuse Docker does not support that functionality
+
+// To see your Database use following command in Terminal: 
+---> "docker exec -it SQL psql -U admin"
+
+// syntax:- docker exec [OPTIONS] <container_name> <command> [command_arguments]
+Where:
+docker exec --->  Execute a command inside a running container.
+[OPTIONS] ---> e.g., -it for interactive terminal.
+<container_name> ---> Name or ID of the container.
+<command> ---> The executable inside the container (psql, mongosh, bash, sh, etc.).
+[command_arguments] ---> Arguments for that command. (-U, -d, etc.)
+
+
+---> admin=# \l     (This will give you list of your DB's)
+
+---> admin=# CREATE DATABASE sql_class_1_db;    (This will create a new DataBase)
+
+// Now download extension named "SQLTools" in vsCode 
+// Now Download extension named "SQLTools PostgreSQL/Cockroach Driver" in vsCode
+// Now You will see a cylinder type icon on left side of vsCode.
+// Click on that icon & click on "PostgreSQL"
+// Fill the details for connection & then click "save connection" & then "connect now".
+
+// Now start writting queries in the files...
+
+
+//----------------------------------------------------------------------------------------------------
+
+// Useful psql commands:-
+-> \l               -- List all databases
+-> \c <db_name>     -- Connect to a database
+-> \dt              -- List tables in the current database
+-> \dn              -- List schemas
+-> \d               -- Describe tables/views
+-> \q               -- Quit psql

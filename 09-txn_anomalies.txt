@@ -1,0 +1,492 @@
+-- ===========================================
+-- ⭐️ Transaction Anomalies:-
+-- ===========================================
+-- Dekho Ab jab ki tumne Transactions padh liya hai, to uski Anomalies samajhna easy hai.
+-- Ye cheez time ke saath yaad ho jaati hai, isliye abhi jitna samajh aaye utna bohot hai.
+
+-- Dekho Jab ek hi time par multiple Transactions chalti hain, to agar proper Isolation na ho, to ye unexpected problems aa sakti hain. Inhi problems ko Anomalies bolte hain.
+
+
+-- ===========================================
+-- ⭐️ 1. Dirty Read:-
+-- ===========================================
+-- Abhi hamne padha ki, Jab tak koi Transaction COMMIT nahi karta, Tab tak uske changes dusri Transactions ko nahi dikhte.
+
+-- Isi wajah se PostgreSQL mein Dirty Read possible nahi hai.
+
+------------------------------------------------------------
+-- Chalo samajhte hain ki Dirty Read hota kya hai.
+
+-- Initial Data:-
+
+-- accounts:
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+
+-- Maan lo agar Database Dirty Read allow karta.
+
+-- ==========================================================================================
+-- Terminal 1 (Txn 1)                               | Terminal 2 (Txn 2)
+-- ==========================================================================================
+
+-- BEGIN;                                           |   BEGIN;
+-- UPDATE accounts SET balance = balance - 500      |
+-- WHERE owner='Motu';                              |
+--                                                  |
+-- UPDATE accounts SET balance = balance - 500      |
+-- WHERE owner='Patlu';                             |
+-- SELECT * FROM accounts;                          |   SELECT * FROM accounts;
+--                                                  |
+-- owner   balance                                  |   owner   balance 
+-- ----------------                                 |   ---------------- 
+-- Motu    4500                                     |   Motu    4500 
+-- Patlu   5500                                     |   Patlu   5500
+--                                                  |
+--                                                  |
+
+-- Dhyan do...
+
+-- Txn 1 ne abhi COMMIT hi nahi kiya. Fir bhi Txn 2 ko 4500 dikh gaya. Isi ko Dirty Read bolte hain.
+
+------------------------------------------------------------
+-- Ab maan lo...
+
+-- Txn 1 mein koi Error aa gayi aur usse ROLLBACK karna pada, to uske changes COMMIT nahi honge Original Db mein;
+
+-- Final Data:-
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+-- Ab Problem dekho...
+
+-- Txn 2 ne 4500 read kiya tha. Lekin wo value kabhi Database mein permanently save hi nahi hui.
+
+-- Kyunki baad mein Transaction Rollback ho gaya.
+
+------------------------------------------------------------
+-- Matlab...
+
+-- Txn 2 ne ek aisi value read kar li, jo baad mein exist hi nahi karti. Isi ko Dirty Read bolte hain.
+
+------------------------------------------------------------
+-- PostgreSQL mein aisa nahi hota. PostgreSQL Dirty Read support hi nahi karta. Matlab jab tak Transaction COMMIT nahi karega, Tab tak uske changes kisi dusri Transaction ko nahi dikhte.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Dirty Read = Kisi dusri Transaction ke Uncommitted Data ko Read kar lena.
+
+-- PostgreSQL mein Dirty Read possible nahi hai. Kyunki wo Isolation Property ko follow karta hai
+
+
+
+-------------------------------------------------------------------------------------------------
+
+-- ===========================================
+-- ⭐️ 2. Repeatable Read:-
+-- ===========================================
+-- Repeatable Read ka matlab hai ki, Agar ek hi Transaction ke andar tum kisi Row ko do baar ya usse zyada Read karte ho, To dono baar same Value hi milni chahiye.
+
+------------------------------------------------------------
+-- Example:-
+
+-- Initial Data:-
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+BEGIN;                          | BEGIN;
+SELECT balance                  |
+FROM accounts                   |
+WHERE owner='Motu';             |
+                                |
+balance                         |
+-------                         |
+5000                            |
+                                | UPDATE accounts
+                                | SET balance = 8000
+                                | WHERE owner='Motu';
+                                |
+                                | COMMIT;
+
+============================================================
+-- Ab Txn 1 firse wahi Query chalata hai.
+
+SELECT balance FROM accounts WHERE owner='Motu';
+
+balance
+-------
+5000
+
+=============================================================
+-- Dhyan do...
+
+-- Txn 2 ne balance ko 8000 kar diya. Fir bhi Txn 1 ko 5000 hi dikh raha hai.
+
+-- Kyunki Repeatable Read guarantee deta hai ki,
+
+-- Ek hi Transaction ke andar tum koi bhi Row ko jitni bhi baar Read karoge, Har baar same Value hi milegi.
+
+------------------------------------------------------------
+-- Agar nayi Value dekhni hai, To pehle current Transaction COMMIT / ROLLBACK karo,  Fir nayi Transaction start karo.
+
+------------------------------------------------------------
+-- One-line Summary:
+-- Repeatable Read = "Ek Transaction ke andar, same Row ko baar-baar Read karoge, to Result     --                    kabhi nahi badlega."
+
+
+
+-------------------------------------------------------------------------------------------------
+
+-- ===========================================
+-- ⭐️ 3. Phantom Read
+-- ===========================================
+-- Phantom Read ka matlab hai ki, Ek hi Transaction ke andar same Query do baar chalai.
+-- Aur dusri baar kuch Nayi Rows dikhne lagi, ya kuch Rows gayab ho gayi.
+
+------------------------------------------------------------
+-- Initial Data
+
+-- accounts:-
+-- ------------------------------------
+-- owner   | balance
+-- ------------------------------------
+-- Motu    | 5000
+-- Patlu   | 6000
+
+
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+BEGIN;                          | BEGIN;
+SELECT *                        |
+FROM accounts                   |
+WHERE balance >= 5000;          |
+                                |
+owner   balance                 |
+---------------------           |
+Motu    5000                    |
+Patlu   6000                    |
+                                | INSERT INTO accounts
+                                | VALUES ('Rahul',7000);
+                                |
+                                | COMMIT;
+
+=============================================================
+-- Ab Txn 1 firse wahi Query chalata hai.
+
+SELECT * FROM accounts WHERE balance >= 5000;
+
+------------------------------------------------------------
+-- Agar Result aaye...
+
+owner   balance
+---------------------
+Motu    5000
+Patlu   6000
+Rahul   7000   👻
+
+------------------------------------------------------------
+-- To Rahul ki ye New Row Phantom Row kehlati hai.
+
+-- Aur isi Situation ko Phantom Read bolte hain.
+
+------------------------------------------------------------
+-- PostgreSQL ke Repeatable Read mein, Ye New Row dikhai nahi degi.
+
+-- Kyunki Transaction apne purane Snapshot ko hi dekh rahi hoti hai.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Phantom Read = "Same Query dobara chalane par Nayi Rows dikhna ya Purani Rows gayab ho jana."
+
+
+
+-------------------------------------------------------------------------------------------------
+
+-- ===========================================
+-- ⭐️ 4. Read Committed (Default in PostgreSQL)
+-- ===========================================
+-- Read Committed ka matlab hai ki, Transaction sirf wahi Data Read kar sakti hai, jo COMMIT ho chuka hai.
+
+-- Kisi dusri Transaction ke Uncommitted Changes kabhi nahi dikhte.
+
+------------------------------------------------------------
+-- Example:-
+
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+BEGIN;                          | BEGIN;
+UPDATE accounts                 |
+SET balance = 8000              |
+WHERE owner='Motu';             |
+                                | SELECT balance
+                                | FROM accounts
+                                | WHERE owner='Motu';
+                                |
+                                | balance
+                                | -------
+                                | 5000
+
+=============================================================
+-- Dhyan do...
+
+-- Txn 1 ne balance ko 8000 kar diya hai. Lekin abhi COMMIT nahi hua.
+
+-- Isliye Txn 2 ko abhi bhi Purani Value (5000) hi dikh rahi hai.
+
+------------------------------------------------------------
+-- Ab Txn 1 COMMIT karta hai.
+
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+COMMIT;                         |
+
+=============================================================
+-- Ab agar Txn 2 dobara SELECT chalaye...
+
+SELECT balance FROM accounts WHERE owner='Motu';
+
+balance
+-------
+8000
+
+------------------------------------------------------------
+-- Matlab Read Committed mein, Sirf COMMIT hua Data hi Read kiya ja sakta hai.
+
+-- Uncommitted Data kabhi nahi dikhta.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Read Committed = "Read only Committed Data." Ye PostgreSQL ka Default Isolation Level hai.
+
+-- MMMMMIIIIIMMMMMMPPPPP INTERVIEW:- Read Committed sirf Dirty Read ko prevent karta hai.
+
+Lekin isme ye dono anomalies abhi bhi possible hain: ❌ Non-Repeatable Read
+--                                                   ❌ Phantom Read
+
+
+
+-------------------------------------------------------------------------------------------------
+
+-- ===========================================
+-- ⭐️ 5. Lost Update
+-- ===========================================
+-- Lost Update ka matlab hai ki, Do Transactions ek hi Row ko ek saath Update karna chahti hain.
+
+-- Aur ek Transaction ka Update, dusri Transaction ke Update ki wajah se Lost (Overwrite) ho jata hai.
+
+------------------------------------------------------------
+-- Initial Data:
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+
+
+-- Agar Row Locking na hoti...
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+BEGIN;                          | BEGIN;
+SELECT balance                  | SELECT balance
+FROM accounts                   | FROM accounts
+WHERE owner='Motu';             | WHERE owner='Motu';
+                                |
+5000                            | 5000
+
+UPDATE accounts                 |
+SET balance = 5500              |
+WHERE owner='Motu';             |
+                                |
+                                | UPDATE accounts
+                                | SET balance = 4500
+                                | WHERE owner='Motu';
+
+COMMIT;                         | COMMIT;
+
+=============================================================
+-- Final Data:
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 4500
+
+------------------------------------------------------------
+-- Dhyan do...
+
+-- Txn 1 ne balance ko 5500 kiya. Lekin uske baad Txn 2 ne balance ko 4500 kar diya.
+
+-- Matlab Txn 1 ka Update completely overwrite ho gaya.
+
+-- Isi ko Lost Update bolte hain.
+
+------------------------------------------------------------
+-- PostgreSQL mein Row Locking ki wajah se aisi problem normally nahi hoti.
+
+-- Jab ek Transaction kisi Row ko Update karti hai, To dusri Transaction ko usi Row par WAIT karna padta hai.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Lost Update = "Ek Transaction ka Update, dusri Transaction ke Update ki wajah se overwrite ho --                jana."
+
+
+
+-------------------------------------------------------------------------------------------------
+
+-- ===========================================
+-- ⭐️ 6. Write Skew
+-- ===========================================
+-- Write Skew ka matlab hai ki, Do Transactions alag-alag Rows ko Update karti hain.
+
+-- alag - alag row ko update karne ki wajah se, Row Locking bhi nahi hoti.
+
+-- Lekin dono Transactions milkar Database ka Business Rule tod deti hain.
+
+------------------------------------------------------------
+-- Example:-
+-- Rule: Hospital mein hamesha kam se kam 1 Doctor Duty par hona chahiye.
+
+------------------------------------------------------------
+-- Initial Data:
+-- ------------------------------------
+-- doctor   | on_duty
+-- ------------------------------------
+-- Rahul    | TRUE
+-- Priya    | TRUE
+
+
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+BEGIN;                          | BEGIN;
+SELECT * FROM doctors;          | SELECT * FROM doctors;
+
+-- Dono Doctors Duty par hain.   | -- Dono Doctors Duty par hain.
+
+UPDATE doctors                  |
+SET on_duty = FALSE             |
+WHERE doctor='Rahul';           |
+
+                                | UPDATE doctors
+                                | SET on_duty = FALSE
+                                | WHERE doctor='Priya';
+
+COMMIT;                         | COMMIT;
+
+=============================================================
+-- Final Data:
+-- ------------------------------------
+-- doctor   | on_duty
+-- ------------------------------------
+-- Rahul    | FALSE
+-- Priya    | FALSE
+
+------------------------------------------------------------
+-- Dhyan do...
+
+-- Txn 1 ne Rahul ko Off Duty kar diya. Txn 2 ne Priya ko Off Duty kar diya.
+
+-- Dono Txn ne Different Rows update ki. Isliye Row Locking bhi nahi hui.
+
+------------------------------------------------------------
+-- Lekin Final Result mein Hospital mein ek bhi Doctor Duty par nahi bacha. Matlab Business Rule break ho gaya. Isi Situation ko Write Skew bolte hain.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Write Skew = "Different Rows update hui,lekin milkar Database ka Business Rule break ho gaya."
+
+
+
+-------------------------------------------------------------------------------------------------
+
+-- ===========================================
+-- ⭐️ 7. Read Skew
+-- ===========================================
+-- Read Skew ka matlab hai ki, Ek Transaction ko Database ka aadha Purana Data aur aadha Naya Data dikh jata hai.
+
+-- Yaani Transaction ko Database ka Consistent Snapshot nahi milta.
+
+------------------------------------------------------------
+-- Initial Data:
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+
+=============================================================
+Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+=============================================================
+
+BEGIN;                          | BEGIN;
+SELECT balance                  |
+FROM accounts                   |
+WHERE owner='Motu';             |
+                                |
+5000                            |
+                                | UPDATE accounts
+                                | SET balance = balance - 500
+                                | WHERE owner='Motu';
+                                |
+                                | UPDATE accounts
+                                | SET balance = balance + 500
+                                | WHERE owner='Patlu';
+                                |
+                                | COMMIT;
+
+SELECT balance
+FROM accounts
+WHERE owner='Patlu';
+
+5500
+
+=============================================================
+-- Dhyan do...
+
+-- Txn 1 ne Motu ka balance 5000 padha. Lekin Patlu ka balance Transaction 2 ke COMMIT ke baad padha.
+
+-- Isliye usse Patlu ka balance 5500 dikh gaya.
+
+------------------------------------------------------------
+-- Matlab Txn 1 ko Motu ka Purana Data mila. Aur Patlu ka Naya Data mila.
+
+-- Yaani Database ka aadha Purana aur aadha Naya Snapshot dikh gaya.
+
+-- Isi Situation ko Read Skew bolte hain.
+
+------------------------------------------------------------
+-- PostgreSQL ke Repeatable Read mein Read Skew nahi hota.
+
+-- Kyunki poori Transaction ek hi Snapshot ko Read karti hai.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Read Skew = "Ek hi Transaction ko Database ka Consistent Snapshot na milna."

@@ -1,0 +1,336 @@
+-- ===========================================
+-- ⭐️ ACID Properties:-
+-- ===========================================
+
+-- 1. A - Atomicity
+-- 2. C - Consisitency
+-- 3. I - Isolated
+-- 4. D - Durability
+
+-- Dekho ab jab ki tumhe Txn samajh aa gaye hai aache se, to ACI Properties samajh na bahut easy hai. Kyunki ACID Properties pura ka pura Txn pe hi based hai.
+
+
+
+-- ===========================================
+-- ⭐️ 1. Atomicity ("All or Nothing"):-
+-- ===========================================
+-- Atomicity kehta hai ki...
+
+-- Maan lo maine ek Transaction (Txn) start kiya.
+-- Us Transaction ke andar maine 100 Queries likhi.
+
+-- BEGIN;
+-- Query 1
+-- Query 2
+-- Query 3
+-- ...
+-- Query 100
+-- COMMIT;
+
+-- Ab do hi possibilities hain.
+
+-- Case 1:
+-- Agar saari 100 ki 100 Queries successfully execute ho gayi, To COMMIT hoga.
+-- Aur 100 ki 100 Queries ke changes Database mein permanently save ho jayenge.
+
+-- Case 2:
+-- Agar 100 mein se sirf 1 Query bhi fail ho gayi, Chahe usse pehle 99 Queries successfully execute ho chuki ho,
+-- Fir bhi un 99 Queries ke changes Database mein save nahi honge. Database un sab changes ko ROLLBACK kar dega.
+
+------------------------------------------------------------
+-- Chalo Bank Transfer wale Example se samajhte hain.
+
+-- Atomicity ye kehta hai ki Agar 'Motu' ke account mein se '500rs.' Deduct hue, to fir uske saamne 'Patlu' ke account mein '500rs.' add hone hi chahiye.
+
+-- Agar Patlu ke account mein kisi karan-varsh '500rs.' add nahi hue to Motu ke account mein se jo '500rs.' deduct hue the, to uss Query ke change ko ROLLBACK kar do.
+
+-- Matlab hano hoga to pura Txn ka block Sucessfully execute hoga. Aur agar ek bhi Query ne Error di to uska Bhugdan bhi Pura ka Pura Txn block dega.
+
+-- Initial Data:-
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+
+-- BEGIN;
+-- UPDATE accounts SET balance = balance - 500 WHERE owner = 'Motu';
+
+-- Yaha Error aa gaya...
+
+-- UPDATE accounts SET balance = balance + 500 WHERE owner = 'Patlu';
+-- ROLLBACK;
+
+------------------------------------------------------------
+
+-- Final Data:-
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+
+-- Dhyan do...
+
+-- Pehli Query successfully chal gayi thi. Fir bhi uske changes Database mein save nahi hue Kyunki Transaction beech mein fail ho gaya.
+
+-- Isi ko Atomicity bolte hain. Ya to poora Transaction chalega. Ya fir us Transaction ka
+-- ek bhi Change Database mein save nahi hoga.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Ya to Txn ki saari Queries Successfully Execute hongi. Ya fir ek bhi nahi.
+-- Agar Successfully ho gayi to COMMIT hoga, warna ROLLBACK.
+
+
+
+-- ===========================================
+-- ⭐️ 2. Isolation:-
+-- ===========================================
+-- Hame pata hai ki, Transaction ke changes Directly Database mein save nahi hote. Wo COMMIT / ROLLBACK hone tak temporarily maintain kiye jate hain.
+
+-- To Isolation kehta hai ki, Har ek Txn ko Apni alag-alag Temporary jagah Milegi changes ko store karne ke liye.
+
+-- Aur Jab koi bhi Txn COMMIT / ROLLBACK nahi karta tan tak uske changes DB mein nahi dikhenge, aur zahir si baat hai Jab tak changes Db mein nahi dikhege dusre Txn ko pata nahi hoga, ki pehle wala Txn kya kar raha hai currently.
+
+------------------------------------------------------------
+-- Chalo Example se samajhte hain.
+
+-- Initial Data
+
+-- accounts
+
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+-- Do Terminals open hain.
+-- -------------------------------------------------------------
+-- Terminal 1 (Txn 1)              | Terminal 2 (Txn 2)
+-- -------------------------------------------------------------
+-- BEGIN;                          | BEGIN;
+-- UPDATE accounts                 |
+-- SET balance = balance - 500     |
+-- WHERE owner='Motu';             |
+-- -- UPDATE 1                     |
+--                                 |
+-- SELECT * FROM accounts;         | SELECT * FROM accounts;
+--                                 |
+-- owner   balance                 | owner   balance
+-- ---------------------           | ---------------------
+-- Motu    4500                    | Motu    5000
+-- Patlu   5000                    | Patlu   5000
+
+
+-- Dhyan do...
+
+-- Txn 1 ko Motu ka balance 4500 dikh raha hai.
+-- Lekin Txn 2 ko abhi bhi Motu ka balance 5000 hi dikh raha hai.
+
+
+-- Aisa kyun?
+-- Kyunki Txn 1 ne abhi COMMIT nahi kiya.
+
+-- Txn1 ke changes sirf Txn1 ke personal temporry space mein change hue hai, abhi tak wo changes COMMIT nahi hue hai.
+-- Isliye dusre Txn ko pata nahi lagega.
+
+----------------------------------------------------------------------------
+-- Terminal 1 (Txn 1)           | Terminal 2 (Txn 2)
+----------------------------------------------------------------------------
+-- Ab Txn 1 COMMIT karta hai.   |   Ab agar Txn 2 dobara SELECT chalaye...
+--                              |   
+-- COMMIT;                      |   SELECT * FROM accounts;
+
+--                              |   To ab Result hoga.
+--                              |   owner   balance
+--                              |   ---------------------
+--                              |   Motu    4500
+--                              |   Patlu   5000
+
+
+-- One-line Summary:
+-- Jab tak Transaction COMMIT nahi hota, Tab tak uske changes sirf usi Transaction ke personal temporary space mein hi dikhte hain, Dusri Transactions ko nahi. Isi Property ko Isolation bolte hain.
+
+
+-- ===========================================
+-- ⭐️ Dirty Read:-
+-- ===========================================
+-- Abhi hamne padha ki, Jab tak koi Transaction COMMIT nahi karta, Tab tak uske changes dusri Transactions ko nahi dikhte.
+
+-- Isi wajah se PostgreSQL mein Dirty Read possible nahi hai.
+
+------------------------------------------------------------
+-- Chalo samajhte hain ki Dirty Read hota kya hai.
+
+-- Initial Data:-
+
+-- accounts:
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+
+-- Maan lo agar Database Dirty Read allow karta.
+
+-- ==========================================================================================
+-- Terminal 1 (Txn 1)                               | Terminal 2 (Txn 2)
+-- ==========================================================================================
+
+-- BEGIN;                                           |   BEGIN;
+-- UPDATE accounts SET balance = balance - 500      |
+-- WHERE owner='Motu';                              |
+--                                                  |
+-- UPDATE accounts SET balance = balance - 500      |
+-- WHERE owner='Patlu';                             |
+-- SELECT * FROM accounts;                          |   SELECT * FROM accounts;
+--                                                  |
+-- owner   balance                                  |   owner   balance 
+-- ----------------                                 |   ---------------- 
+-- Motu    4500                                     |   Motu    4500 
+-- Patlu   5500                                     |   Patlu   5500
+--                                                  |
+--                                                  |
+
+
+-- Dhyan do...
+
+-- Txn 1 ne abhi COMMIT hi nahi kiya. Fir bhi Txn 2 ko 4500 dikh gaya. Isi ko Dirty Read bolte hain.
+
+------------------------------------------------------------
+-- Ab maan lo...
+
+-- Txn 1 mein koi Error aa gayi aur usse ROLLBACK karna pada, to uske changes COMMIT nahi honge Original Db mein;
+
+-- Final Data:-
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+------------------------------------------------------------
+-- Ab Problem dekho...
+
+-- Txn 2 ne 4500 read kiya tha. Lekin wo value kabhi Database mein permanently save hi nahi hui.
+
+-- Kyunki baad mein Transaction Rollback ho gaya.
+
+------------------------------------------------------------
+-- Matlab...
+
+-- Txn 2 ne ek aisi value read kar li, jo baad mein exist hi nahi karti. Isi ko Dirty Read bolte hain.
+
+------------------------------------------------------------
+-- PostgreSQL mein aisa nahi hota. PostgreSQL Dirty Read support hi nahi karta. Matlab jab tak Transaction COMMIT nahi karega, Tab tak uske changes kisi dusri Transaction ko nahi dikhte.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Dirty Read = Kisi dusri Transaction ke Uncommitted Data ko Read kar lena.
+
+-- PostgreSQL mein Dirty Read possible nahi hai. Kyunki wo Isolation Property ko follow karta hai
+
+
+
+-- ===========================================
+-- ⭐️ 3. Consistency:-
+-- ===========================================
+-- Consistency ka matlab hai ki,
+-- Transaction execute hone se pehle bhi Database Valid State mein hona chahiye,
+-- Aur Transaction execute hone ke baad bhi Database Valid State mein hi rehna chahiye.
+
+------------------------------------------------------------
+-- Chalo Bank Transfer wale Example se samajhte hain.
+
+-- Initial Data:-
+
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 5000
+-- Patlu  | 5000
+
+-- Total Money = 10000 Rs.
+
+------------------------------------------------------------
+-- BEGIN;
+-- UPDATE accounts SET balance = balance - 500 WHERE owner='Motu';
+-- UPDATE accounts SET balance = balance + 500 WHERE owner='Patlu';
+-- COMMIT;
+
+------------------------------------------------------------
+-- Final Data:-
+-- ------------------------------------
+-- owner  | balance
+-- ------------------------------------
+-- Motu   | 4500
+-- Patlu  | 5500
+
+------------------------------------------------------------
+
+-- Dhyan do...
+
+-- Transaction se pehle bhi Total Money = 10000 Rs.
+
+-- Transaction ke baad bhi Total Money = 10000 Rs.
+
+-- Sirf paise ek Account se dusre Account mein transfer hue hain.
+
+------------------------------------------------------------
+
+-- Isi ko Consistency bolte hain.
+
+-- Matlab Transaction ke baad Database ke Rules aur Constraints break nahi hone chahiye.
+
+------------------------------------------------------------
+-- One-line Summary:
+
+-- Consistency = Transaction ke baad bhi Database hamesha Valid State mein rehna chahiye.
+-- Jaha pe Atomicity & Isolation hoga, waha pe automatic Consistency aa jaayegi.
+
+
+
+-- ===========================================
+-- ⭐️ 4. Durability:-
+-- ===========================================
+-- Durability kehta hai ki,
+
+-- Agar koi Transaction COMMIT ho chuka hai, To uske changes har haal mein permanently Disk par save hone chahiye.
+
+-- Chahe uske turant baad Database Crash ho jaye, Server Restart ho jaye, ya Power chali jaye.
+
+------------------------------------------------------------
+-- Example:
+-- BEGIN; 
+-- UPDATE accounts SET balance = balance - 500 WHERE owner='Motu'; 
+-- UPDATE accounts SET balance = balance + 500 WHERE owner='Patlu'; 
+-- COMMIT;
+
+------------------------------------------------------------
+-- Maan lo COMMIT hote hi 💥 Database Crash ho gaya. Ya Server Restart ho gaya.
+
+-- Par Jab Server thik ho jaaye tab, uss Commited changes ko Disk pe permanently Save karne ke liye Database internally kya karta hai, Temporary kahi Store karta hai, Logs mein likhta hai, ya koi aur Technique use karta hai... Mujhe usse koi fark nahi padta.
+
+-- Bas agar Transaction COMMIT ho gaya hai, To mere Changes kisi bhi halat mein Lose nahi hone chahiye.
+------------------------------------------------------------
+-- Jab Database dobara Start hoga,
+
+-- To Motu ka balance 4500 hi hona chahiye. Aur Patlu ka balance 5500 hi hona chahiye.
+
+-- COMMIT ke baad koi bhi Change lose nahi hona chahiye. Isi ko Durability bolte hain.
+
+------------------------------------------------------------
+-- Haan, wo baat alag hai ki agar Data Center pe hi Bomb phat gaya aur Disk hi udd gayi 😂, To fir Database bhi kya hi kare.
+
+-- Durability ka matlab ye hai ki jab tak Storage safe hai, COMMIT kiye hue Changes kabhi lose nahi honge.
